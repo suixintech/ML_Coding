@@ -1,0 +1,160 @@
+一、PCA的原理及实现
+
+  1、什么是主成分分析(pca或者k-l变换)
+
+主成分分析是一种用于探索高维数据结构的技术，用于数据压缩，将具有相关性的高维变量转换成线性无关的低维变量，低维变量尽最大可能保留原始数据的信息量；
+
+  2、主成分分析的原理
+
+  2.1 先来看几个概念
+
+      a、方差：度量一组数据的离散程度
+
+      b、协方差：衡量两组数据间的总体误差，方差是协方差的一种特殊情况，即两组数据为同一组数据的情况；
+
+      c、协方差矩阵：即数据集中两两变量的协方差构成的矩阵；
+
+      d、特征值与特征向量：特征向量可以理解是维度的数据结构信息(方向)，而特征值可以理解成数据结构的缩放比例；
+
+  2.2 主成分分析的原理是什么？
+
+即求协方差矩阵的特征值与特征向量，根据特征值进行排序从大至小找出k个维度对应的特征向量，使用原始数据集矩阵点乘k个特征向量，即得到相应的降维后的数据集；
+
+  3、主成分分析的思想
+
+特征向量可以看成一个新的坐标系，协方差矩阵与特征向量相乘相当于把数据变换到特征向量坐标系中，使得任何数据投影的第1大方差在第1坐标上,第2大方差在第2坐标上，以此类推，同样对应第1主成分，第2主成分...，如果特征共线，投影会在同一坐标上，这也是为什么通过协方差矩阵的特征向量可以去共线特征；
+
+  4、python实现
+
+  class pcaCoding:
+      def __init__(self,x,k):
+          self.x=x
+          self.k=k
+          self.meanVal=np.mean(self.x,axis=0)
+          self.newData=self.x-self.meanVal
+          self.cov=np.cov(self.newData,rowvar=False)
+
+
+      def computeEigenvalue(self):
+          eigenvalue,featurevector=np.linalg.eig(self.cov)
+          sortindex=np.argsort(eigenvalue)
+          feaindex=sortindex[-1:-(self.k+1):-1]
+          feavec=featurevector[:,feaindex]
+          return feavec
+
+      def computeLowData(self):
+          feavec=self.computeEigenvalue()
+          return self.newData.dot(feavec)
+
+
+  if __name__=="__main__":
+      X = np.array([[2.5, 2.4], [0.5, 0.7], [2.2, 2.9], [1.9, 2.2], [3.1, 3.0], [2.3, 2.7],
+                    [2, 1.6], [1, 1.1], [1.5, 1.6], [1.1, 0.9]])
+      test=pcaCoding(X,1)
+      print(test.computeLowData())
+        
+
+5、注意点
+
+实现的时候需要注意矩阵的切片取数技巧；
+
+
+
+===================================
+
+
+
+二、LDA的原理及实现
+
+  1、什么是LDA线性判别分析
+
+  判别分析可以分为矩阵判别、bayes判别、线性判别等等；
+
+  线性判别分析简称LDA，又称为Fisher线性判别，是一种有监督学习，根据给的标签数据，找到一个向量w，将数据投影到w之后，使得不同类别的数据距离较远，使用类别的均值差的绝对值进行衡量，同时要使得每个类内部数据集点比较集中，即意味着投影后的方差要最小；
+
+  2、LDA的计算实现步骤
+
+    a、对数据进行标准化处理
+
+    from sklearn.preprocessing import StandardScaler
+    import numpy as np
+    data=np.array([[2.5, 2.4,0], [0.5, 0.7,1], [2.2, 2.9,0], [1.9, 2.2,0], [3.1, 3.0,0], [2.3, 2.7,0],
+    [2, 1.6,1], [1, 1.1,1], [1.5, 1.6,1], [1.1, 0.9,1]])
+    train_y=data[:,-1].astype(int)
+    std=StandardScaler()
+    std_data=std.fit_transform(data[:,:-1])
+
+
+    b、计算不同类别的均值向量
+
+    mean_vecs=[]
+    for label in range(2):
+        mean_vecs.append(np.mean(std_data[label==train_y],axis=0))
+        
+
+    c、计算类别内的散布矩阵
+
+    这里需要注意，如果标签数据是均匀分布，则使用类别相应每个样本向量减去样本均值向量的平方和再进行累加；如果数据标签不是均匀分布，则可以使用协方差矩阵代替归一化的散布矩阵
+
+    d=2
+    S_W=np.zeros((d,d))
+    if len(np.unique(np.bincount(train_y)))==1:
+        for label,mv in zip(range(2),mean_vecs):
+            class_scatter=np.zeros((d,d))
+            for row in std_data[train_y==label]:
+                row,mv=row.reshape(d,1),mv.reshape(d,1)
+                class_scatter+=(row-mv).dot((row-mv).T)
+            S_W+=class_scatter
+    else:
+        for label,mv in zip(range(2),mean_vecs):
+            class_scatter=np.cov(std_data[train_y==label].T)
+            S_W+=class_scatter
+       
+
+    d、计算类别之间的散步矩阵 
+
+    mean_overall=np.mean(std_data,axis=0)
+    S_B=np.zeros((d,d))
+    for i,mean_vec in enumerate(mean_vecs):
+        N=std_data[train_y==i,:].shape[0]
+        mean_vec=mean_vec.reshape(d,1)
+        mean_overall=mean_overall.reshape(d,1)
+        S_B+=N*(mean_vec-mean_overall).dot((mean_vec-mean_overall).T)
+        
+
+    e、根据定义公式：类间距离最大/类内方差最小
+
+    在pca就说过特征向量可以看成一个新的坐标系，可以去共线性，因此最终LDA也采用的是特征值与特征
+
+    向量进行分解，只不过不再以特征之间的协方差矩阵进行求解，使用S_B/S_W求特征值及特征向量，接下
+
+    来的步骤和pca后续步骤基本一致；
+
+    k=1
+    eigen_vals,eigen_vecs=np.linalg.eig(np.linalg.inv(S_W).dot(S_B))
+    eigen_index=np.argsort(eigen_vals)
+    eigen_sort_index=eigen_index[-1:-(k+1):-1]
+    feature_vec=eigen_vecs[:,eigen_sort_index]
+
+    print(std_data.dot(feature_vec))
+
+
+===================================
+
+
+
+三、pca与lda的区别
+
+  a、pca是无监督学习，lda是监督学习方法；
+
+  b、pca从协方差矩阵考虑，lda从类别矩阵和类内方差考虑；
+
+  c、pca降维后是n-1维，lda是类别数量-1维；
+
+  d、pca从协方差矩阵出发，因为协方差矩阵是对称矩阵，因此特征向量的是正交的，而lda从类别矩阵与类内
+
+方差考虑，不是对称阵，因此不一定是正交的；
+
+  e、lda用于分类降维，而pca均可用；
+
+  f、lda需要保证类内方差散布矩阵可逆；
