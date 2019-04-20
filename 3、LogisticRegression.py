@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 #-*-coding:utf-8 -*-
 # __Author__  : 随心
-# __Time__    : 2019/4/20 13:19 PM
 # __File__    : LogisticRegression.py
 # __Software__: PyCharm
 
