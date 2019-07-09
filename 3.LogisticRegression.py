@@ -7,7 +7,7 @@
 
 '''
     逻辑回归的实现及注意事项:
-    1、要求label服从伯努利分布,属于广义线性模型中的一种
+    1、要求单个label服从伯努利分布，整体样本服从二项分布,属于广义线性模型中的一种
     2、使用多种优化方法实现逻辑回归(二分类 and 多分类)，使用以下数据集
     def getData():
         from sklearn.datasets import make_classification
