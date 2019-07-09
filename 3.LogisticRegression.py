@@ -146,6 +146,72 @@ class LogitSGD:
 
 
 
+class LogitPso:
+    def __init__(self):
+        self.X1, self.y1, _, _ = getData()
+        self.y1= self.y1.reshape(200, 1)
+        self.X_train, self.X_test, self.y_train, self.y_test = self.train_split_test(self.X1, self.y1)
+        self.w=0.8
+        self.c1,self.c2=2,2
+        self.r1,self.r2=0.6,0.3
+        self.pN=30
+        self.dim=11
+        self.max_iter=3000
+        self.X=np.zeros((self.pN,self.dim))
+        self.V=np.zeros((self.pN,self.dim))
+        self.pbest=np.zeros((self.pN,self.dim))
+        self.gbest=np.zeros((1,self.dim))
+        self.p_fit=np.zeros(self.pN)
+        self.fit=1e+6
+
+    def train_split_test(self,X, y,ratio=0.7):
+        length = int(len(X) *ratio)
+        X_train = X[0:length, :]
+        y_train = y[0:length]
+        X_test = X[length:, :]
+        y_test = y[length:]
+        return X_train, X_test, y_train, y_test
+
+    def sigmoid(self,x):
+        return 1/(1+np.exp(-x))
+
+    def costFunction(self,theta,x,y):
+        return -np.mean(y*np.log(self.sigmoid(np.insert(x,0,1,axis=1)@theta))+(1-y)*np.log(1-self.sigmoid(np.insert(x,0,1,axis=1)@theta)))
+
+    def initPopulation(self):
+        for i in range(self.pN):
+            for j in range(self.dim):
+                self.X[i][j]=np.random.uniform(0,1)
+                self.V[i][j]=np.random.uniform(0,1)
+            self.pbest[i]=self.X[i]
+            cost=self.costFunction(self.X[i],self.X_train,self.y_train)
+            self.p_fit[i]=cost
+            if (cost<self.fit):
+                self.fit=cost
+                self.gbest=self.X[i]
+
+
+    def fitModel(self):
+        self.initPopulation()
+        costValue=[]
+        for i in range(self.max_iter):
+            for j in range(self.pN):
+                cost=self.costFunction(self.X[j],self.X_train,self.y_train)
+                if (cost<self.p_fit[j]):
+                    self.pbest[j]=self.X[j]
+                    self.p_fit[j]=cost
+                    if (self.p_fit[j]<self.fit):
+                        self.gbest=self.X[j]
+                        self.fit=self.p_fit[j]
+            for k in range(self.pN):
+                self.V[k]=self.w*self.V[k]+self.c1*self.r1*(self.pbest[k]-self.X[k])+self.c2*self.r2*(self.gbest-self.X[k])
+                self.X[k]=self.X[k]+self.V[k]
+            costValue.append(self.fit)
+        return self.gbest,costValue
+    
+    
+
+    
 
 if __name__=="__main__":
     demo=LogitSGD()
