@@ -80,6 +80,75 @@ class Perceptron:
         return predictValue
 
 
+    
+#PSO求解感知机
+class PerceptronPso:
+    def __init__(self):
+        self.train, self.y_train, _ = getTest()
+        self.y_train[self.y_train == 0] = -1
+        self.c1,self.c2=2,2
+        self.r1,self.r2=0.6,0.5
+        self.pN=2
+        self.dim=self.train.shape[1]+1
+        self.X=np.zeros((self.pN,self.dim))
+        self.V=np.zeros((self.pN,self.dim))
+        self.pbest=np.zeros((self.pN,self.dim))
+        self.gbest=np.zeros((1,self.dim))
+        self.p_fit=np.zeros(self.pN)
+        self.fit=1e10
+        self.maxiter = 1000
+        self.w = 0.8
+
+    def costFunction(self,w,x, y):
+        return -((x @ w) * y).sum()
+
+    def initTheta(self,w,x,y):
+        x = np.insert(x, 0, 1, axis=1)
+        wValue=np.sqrt((np.power(w,2)).sum())
+        result=(y*(x@w)/wValue)
+        errSample=np.where(result<=0)
+        return x[errSample],y[errSample]
+
+
+    def init_Population(self):
+        for i in range(self.pN):
+            for j in range(self.dim):
+                self.X[i][j]=np.random.uniform(0,1)
+                self.V[i][j]=np.random.uniform(0,1)
+            self.pbest[i]=self.X[i]
+            self.train_data,self.train_label=self.initTheta(self.X[i],self.train,self.y_train)
+            tmp=self.costFunction(self.X[i],self.train_data,self.train_label)
+            self.p_fit[i]=tmp
+            if (tmp<self.fit):
+                self.fit=tmp
+                self.gbest=self.X[i]
+
+    def modelfit(self):
+        self.init_Population()
+        fitness=[]
+        for t in range(self.maxiter):
+            for i in range(self.pN):
+                self.train_data, self.train_label = self.initTheta(self.X[i], self.train, self.y_train)
+                tmp = self.costFunction(self.X[i], self.train_data, self.train_label)
+                if (tmp<self.p_fit[i]):
+                    self.p_fit[i]=tmp
+                    self.pbest[i]=self.X[i]
+                    if (self.p_fit[i]<self.fit):
+                        self.gbest=self.X[i]
+                        self.fit=self.p_fit[i]
+            for k in range(self.pN):
+                self.V[k]=self.w*self.V[k]+self.c1*self.r1*(self.pbest[k]-self.X[k])+self.c2*self.r2*(self.gbest-self.X[k])
+                self.X[k]=self.X[k]+self.V[k]
+            fitness.append(self.fit)
+        return fitness,self.gbest
+
+    def sign(self,x):
+        return 1 if x>=0 else -1
+
+
+    def predict(self,x):
+        _,w=self.modelfit()
+        return self.sign(np.insert(x,0,1)@w)
 
 
 if __name__=="__main__":
